@@ -1,0 +1,4 @@
+test/
+pretrained_models/
+__pycache__/
+xception65/

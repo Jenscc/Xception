@@ -13,10 +13,10 @@ import torch
 import tensorflow as tf
 
 import converter
-import original_tf.xception as xception_tf
+# import original_tf.xception as xception_tf
 import xception
 
-slim = tf.contrib.slim
+# slim = tf.contrib.slim
 
 parser = argparse.ArgumentParser(
     description='Test pytorch results whether or not equal to tensorflow`s')
@@ -75,37 +75,37 @@ if __name__ == '__main__':
     images_pth = torch.from_numpy(images_pth)
     
     
-    # TensorFlow predicion
-    inputs = tf.placeholder(tf.float32, shape=[None, 299, 299, 3], name='inputs')
+    # # TensorFlow predicion
+    # inputs = tf.placeholder(tf.float32, shape=[None, 299, 299, 3], name='inputs')
     
-    with slim.arg_scope(xception_tf.xception_arg_scope()):
-        if model_name == 'xception_41':
-            net, end_points = xception_tf.xception_41(inputs, num_classes=1001,
-                                                      is_training=False)
-        elif model_name == 'xception_71':
-            net, end_points = xception_tf.xception_71(inputs, num_classes=1001,
-                                                      is_training=False)
-        else:
-            net, end_points = xception_tf.xception_65(inputs, num_classes=1001,
-                                                      is_training=False)
-    predictions = tf.squeeze(end_points.get('predictions'), axis=[1, 2])
-    classes = tf.argmax(predictions, axis=1)
+    # with slim.arg_scope(xception_tf.xception_arg_scope()):
+    #     if model_name == 'xception_41':
+    #         net, end_points = xception_tf.xception_41(inputs, num_classes=1001,
+    #                                                   is_training=False)
+    #     elif model_name == 'xception_71':
+    #         net, end_points = xception_tf.xception_71(inputs, num_classes=1001,
+    #                                                   is_training=False)
+    #     else:
+    #         net, end_points = xception_tf.xception_65(inputs, num_classes=1001,
+    #                                                   is_training=False)
+    # predictions = tf.squeeze(end_points.get('predictions'), axis=[1, 2])
+    # classes = tf.argmax(predictions, axis=1)
     
-    init = tf.global_variables_initializer()
+    # init = tf.global_variables_initializer()
     
-    saver = tf.train.Saver(var_list=slim.get_model_variables())
+    # saver = tf.train.Saver(var_list=slim.get_model_variables())
     
-    with tf.Session() as sess:
-        sess.run(init)
+    # with tf.Session() as sess:
+    #     sess.run(init)
         
-        # Load tensorflow pretrained paremeters
-        saver.restore(sess, checkpoint_path)
+    #     # Load tensorflow pretrained paremeters
+    #     saver.restore(sess, checkpoint_path)
         
-        logits, labels = sess.run([predictions, classes], 
-                                  feed_dict={inputs: images})
-        print('TensorFlow predicion:')
-        print(labels)
-        print(np.argsort(logits)[:, -5:])
+    #     logits, labels = sess.run([predictions, classes], 
+    #                               feed_dict={inputs: images})
+    #     print('TensorFlow predicion:')
+    #     print(labels)
+    #     print(np.argsort(logits)[:, -5:])
     
     
     # PyTorch prediction
@@ -131,25 +131,25 @@ if __name__ == '__main__':
     print('Save model to: ', output_path)
     
     
-    # Test converted xception model
-    if model_name == 'xception_41':
-        xception_ = xception.xception_41(num_classes=1001, 
-                                         pretrained=True,
-                                         checkpoint_path=output_path)
-    elif model_name == 'xception_71':
-        xception_ = xception.xception_71(num_classes=1001, 
-                                         pretrained=True,
-                                         checkpoint_path=output_path)
-    else:
-        xception_ = xception.xception_65(num_classes=1001, 
-                                         pretrained=True,
-                                         checkpoint_path=output_path)
+    # # Test converted xception model
+    # if model_name == 'xception_41':
+    #     xception_ = xception.xception_41(num_classes=1001, 
+    #                                      pretrained=True,
+    #                                      checkpoint_path=output_path)
+    # elif model_name == 'xception_71':
+    #     xception_ = xception.xception_71(num_classes=1001, 
+    #                                      pretrained=True,
+    #                                      checkpoint_path=output_path)
+    # else:
+    #     xception_ = xception.xception_65(num_classes=1001, 
+    #                                      pretrained=True,
+    #                                      checkpoint_path=output_path)
 
-    xception_.eval()
-    with torch.no_grad():
-        logits_pth = torch.nn.functional.softmax(xception_(images_pth), dim=1)
-        logits_pth = logits_pth.data.cpu().numpy().squeeze(axis=2).squeeze(axis=2)
-        labels_pth = np.argmax(logits_pth, axis=1)
-        print('PyTorch prediction:')
-        print(labels_pth)
-        print(np.argsort(logits_pth)[:, -5:])
+    # xception_.eval()
+    # with torch.no_grad():
+    #     logits_pth = torch.nn.functional.softmax(xception_(images_pth), dim=1)
+    #     logits_pth = logits_pth.data.cpu().numpy().squeeze(axis=2).squeeze(axis=2)
+    #     labels_pth = np.argmax(logits_pth, axis=1)
+    #     print('PyTorch prediction:')
+    #     print(labels_pth)
+    #     print(np.argsort(logits_pth)[:, -5:])
