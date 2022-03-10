@@ -21,7 +21,7 @@ def load_preprocess_image(path, label):
     image = image / 255 
     label = tf.reshape(label, [1])   # 将标签 从一维 变成 二维。 [1 , 1, 0 , 1] -> [[1], [1], [0], [1]]
     return image, label
-def load_preprocess_test_image(path,label):
+def load_preprocess_val_image(path,label):
     image = tf.io.read_file(path)
     image = tf.image.decode_png(image, channels = 3)
     image = tf.image.resize(image, [256, 256])
@@ -44,14 +44,14 @@ train_image_ds = train_image_ds.shuffle(train_count).batch(BATCH_SIZE)
 
 # 第二步： 构建测试数据
 
-test_image_path = glob.glob('./test/dataset_LUSC_correct_test/*/*.png')
-test_image_label = [int(path.split('\\')[1] == 'yang') for path in test_image_path]
+val_image_path = glob.glob('./test/dataset_LUSC_correct_test/*/*.png')
+val_image_label = [int(path.split('\\')[1] == 'yang') for path in val_image_path]
 
-test_image_ds = tf.data.Dataset.from_tensor_slices((test_image_path, test_image_label))
-test_image_ds = test_image_ds.map(load_preprocess_test_image, num_parallel_calls = AUTOTUNE )
-test_image_ds = test_image_ds.repeat().batch(BATCH_SIZE)
+val_image_ds = tf.data.Dataset.from_tensor_slices((val_image_path, val_image_label))
+val_image_ds = val_image_ds.map(load_preprocess_val_image, num_parallel_calls = AUTOTUNE )
+val_image_ds = val_image_ds.repeat().batch(BATCH_SIZE)
 
-test_count = len(test_image_path)
+val_count = len(val_image_path)
 
 # 第三步： keras内置的Xception网络的实现：
 covn_base = keras.applications.xception.Xception(
@@ -69,7 +69,7 @@ model.add(layers.Dense(256, activation = 'relu'))
 model.add(layers.Dense(1, activation = 'sigmoid'))
 # 3.3 model 编译
 model.compile(
-    optimizer= keras.optimizers.Adam(lr = 0.0005),
+    optimizer= keras.optimizers.Adam(learning_rate = 0.0005),
     loss = 'binary_crossentropy',
     metrics = ['accuracy',km.f1_score(), km.binary_precision(), km.binary_recall()]
 )
@@ -78,39 +78,41 @@ initial_epochs = 5
 history  = model.fit(
     train_image_ds,
     # steps_per_epoch = int(train_count / BATCH_SIZE)
-    steps_per_epoch = 20,
+    steps_per_epoch = 50,
     epochs = initial_epochs,
-    validation_data = test_image_ds,
-    # validation_steps =  int(test_count / BATCH_SIZE)
-    validation_steps = 3
+    validation_data = val_image_ds,
+    # validation_steps =  int(val_count / BATCH_SIZE)
+    validation_steps = 10
 )
 print(history.history)
 
-# # 第4步：微调
-# # 4.1 解冻
-# covn_base.trainable = True  
-# # len(covn_base.layers)   # 133
-# # 4.2 打开部分层，关闭前面的层
-# fine_tune_at = -33
-# for layer in covn_base.layers[:fine_tune_at]:
-#     layer.trainable= False
-# # 4.3 编译
-# model.compile(
-#     optimizer = keras.optimizers.Adam(lr = 0.0005 /10),
-#     loss = 'binary_crossentropy',
-#     metrics = ['accuracy']
-# )
+# 第4步：微调
+# 4.1 解冻
+covn_base.trainable = True  
+# len(covn_base.layers)   # 133
+# 4.2 打开部分层，关闭前面的层
+fine_tune_at = -33
+for layer in covn_base.layers[:fine_tune_at]:
+    layer.trainable= False
+# 4.3 编译
+model.compile(
+    optimizer = keras.optimizers.Adam(learning_rate = 0.0005 /10),
+    loss = 'binary_crossentropy',
+    metrics = ['accuracy',km.f1_score(), km.binary_precision(), km.binary_recall()]
+)
 
-# # 4.4 准备参数，开始训练
-# fine_tune_epochs = 5
-# total_epochs = initial_epochs + fine_tune_epochs
-# history = model.fit(
-#     train_image_ds,
-#     steps_per_epoch = int(train_count / BATCH_SIZE),  # 或者改为双斜杠
-#     epochs = total_epochs,
-#     initial_epoch = initial_epochs,
-#     validation_data = test_image_ds,
-#     validation_steps = int(test_count/ BATCH_SIZE)  # 或者改为双斜杠
-# )
+# 4.4 准备参数，开始训练
+fine_tune_epochs = 10
+total_epochs = initial_epochs + fine_tune_epochs
+history = model.fit(
+    train_image_ds,
+    steps_per_epoch = 50,
+    epochs = total_epochs,
+    initial_epoch = initial_epochs,
+    validation_data = val_image_ds,
+    validation_steps = 10
+)
 
+print(history.history)
 
+model.save("test/my_model.h5")
